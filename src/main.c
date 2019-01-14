@@ -23,6 +23,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
+
 #include <pthread.h>
 
 #include <sys/epoll.h>
@@ -30,6 +32,8 @@
 #include "main.h"
 #include "socket_interface.h"
 #include "message.h"
+#include "https.h"
+#include "network_parser.h"
 
 void *message_loop (void *);
 

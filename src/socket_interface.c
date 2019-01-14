@@ -25,6 +25,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <unistd.h>
+
+#include <sys/stat.h>
+
 #include "socket_interface.h"
 #include "main.h"
 

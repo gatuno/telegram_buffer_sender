@@ -24,6 +24,8 @@
 
 #include <errno.h>
 
+#include <unistd.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -39,6 +41,8 @@
 #include "jsmn.h"
 
 #define MIN(i, j) ((i) <= (j) ? (i) : (j))
+
+int parse_check (int status, char *body, int body_len);
 
 static SSL_CTX *ssl_context;
 
