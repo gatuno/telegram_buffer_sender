@@ -8,7 +8,9 @@ telegram_buffer_sender_SOURCES = main.c main.h \
 	message.c message.h \
 	network_parser.c network_parser.h \
 	socket_interface.c socket_interface.h \
-	uri_encode.c uri_encode.h
+	uri_encode.c uri_encode.h \
+	config.c config.h \
+	ini.c ini.h
 
 telegram_buffer_sender_CPPFLAGS = -DLOCALEDIR=\"$(localedir)\" $(AM_CPPFLAGS)
 telegram_buffer_sender_CFLAGS = $(OPENSSL_CFLAGS) $(PTHREAD_CFLAGS) $(AM_CFLAGS)

@@ -40,13 +40,15 @@
 
 #include "jsmn.h"
 
+#include "config.h"
+
 #define MIN(i, j) ((i) <= (j) ? (i) : (j))
 
 int parse_check (int status, char *body, int body_len);
 
 static SSL_CTX *ssl_context;
 
-static const char * bot_key_api = "";
+static const char * bot_key_api = NULL;
 
 void https_init (void) {
 	SSL_load_error_strings();
@@ -54,6 +56,14 @@ void https_init (void) {
 	OpenSSL_add_all_algorithms();
 	
 	ssl_context = SSL_CTX_new (TLS_client_method ());
+	
+	bot_key_api = config_get_string (CONFIG_BOT_KEY);
+	
+	if (bot_key_api == NULL || bot_key_api[0] == 0) {
+		fprintf (stderr, "Bot Key api not set!");
+		
+		exit (1);
+	}
 }
 
 int https_connect_tcp (const char *hostname, int port) {

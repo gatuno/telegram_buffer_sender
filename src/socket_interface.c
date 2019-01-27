@@ -31,12 +31,20 @@
 
 #include "socket_interface.h"
 #include "main.h"
-
-#define SOCKET_PATH "/tmp/telegrambf.socket"
+#include "config.h"
 
 int interface_setup_socket (void) {
 	int sock;
 	struct sockaddr_un socket_name;
+	char *socket_path;
+	
+	socket_path = config_get_string (CONFIG_SOCKET_PATH);
+	
+	if (socket_path == NULL || socket_path[0] == 0) {
+		fprintf (stderr, "Socket path not set!\n");
+		
+		return -1;
+	}
 	
 	sock = socket (AF_UNIX, SOCK_SEQPACKET, 0);
 	
@@ -49,9 +57,9 @@ int interface_setup_socket (void) {
 	memset (&socket_name, 0, sizeof (struct sockaddr_un));
 	
 	socket_name.sun_family = AF_UNIX;
-	strncpy (socket_name.sun_path, SOCKET_PATH, sizeof (socket_name.sun_path) - 1);
+	strncpy (socket_name.sun_path, socket_path, sizeof (socket_name.sun_path) - 1);
 	
-	unlink (SOCKET_PATH);
+	unlink (socket_path);
 	
 	if (bind (sock, (struct sockaddr *) &socket_name, sizeof (struct sockaddr_un)) < 0) {
 		perror ("Bind");
@@ -66,16 +74,19 @@ int interface_setup_socket (void) {
 	}
 	
 	/* TODO: Aplicar permisos aquí */
-	chmod (SOCKET_PATH, 0666);
+	chmod (socket_path, 0666);
 	
 	return sock;
 }
 
 void interface_close (int sock) {
+	char *socket_path;
+	
 	close (sock);
 	
+	socket_path = config_get_string (CONFIG_SOCKET_PATH);
 	/* Remove the path, if still exists */
-	unlink (SOCKET_PATH);
+	unlink (socket_path);
 }
 
 PollingInfo * interface_accept_client (int sock) {

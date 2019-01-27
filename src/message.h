@@ -21,7 +21,13 @@
 #ifndef __MESSAGE_H__
 #define __MESSAGE_H__
 
+enum {
+	MESSAGE_TYPE_NORMAL = 0,
+	MEESAGE_TYPE_EXIT
+};
+
 typedef struct _TelegramMessage {
+	int type;
 	char username[128];
 	
 	char text[8192];
@@ -35,5 +41,6 @@ void message_init (void);
 void message_add (char *username, char *text);
 TelegramMessage *block_for_messages (void);
 void message_return_to_list (TelegramMessage *list);
+void message_signal_exit (void);
 
 #endif /* __MESSAGE_H__ */

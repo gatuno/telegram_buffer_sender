@@ -47,6 +47,7 @@ void message_add (char *username, char *text) {
 		return;
 	}
 	
+	new->type = MESSAGE_TYPE_NORMAL;
 	new->next = NULL;
 	new->tries = 0;
 	
@@ -55,6 +56,35 @@ void message_add (char *username, char *text) {
 	
 	strncpy (new->text, text, sizeof (new->text));
 	new->text[sizeof (new->text) - 1] = 0;
+	
+	pthread_mutex_lock (&message_list_mutex);
+	/* Ligar */
+	if (lista_final == NULL) {
+		/* Primero de la lista */
+		lista_final = lista_inicio = new;
+	} else {
+		lista_final->next = new;
+		lista_final = new;
+	}
+	
+	pthread_cond_signal (&message_list_cond);
+	pthread_mutex_unlock (&message_list_mutex);
+}
+
+void message_signal_exit (void) {
+	TelegramMessage *new;
+	
+	new = (TelegramMessage *) malloc (sizeof (TelegramMessage));
+	
+	if (new == NULL) {
+		printf ("Warning: No se pudo reservar memoria para un mensaje\n");
+		
+		return;
+	}
+	
+	new->type = MEESAGE_TYPE_EXIT;
+	new->next = NULL;
+	new->tries = 0;
 	
 	pthread_mutex_lock (&message_list_mutex);
 	/* Ligar */

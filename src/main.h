@@ -22,6 +22,7 @@
 #define __MAIN_H__
 
 enum {
+	TYPE_EXIT_HANDLER,
 	TYPE_LISTEN_SOCKET,
 	TYPE_CLIENT
 };

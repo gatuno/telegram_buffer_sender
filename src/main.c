@@ -29,15 +29,33 @@
 
 #include <sys/epoll.h>
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+
 #include "main.h"
 #include "socket_interface.h"
 #include "message.h"
 #include "https.h"
 #include "network_parser.h"
+#include "config.h"
 
 void *message_loop (void *);
+void main_loop (int epoll_fd);
 
 pthread_t thread_message;
+int pipe_salida;
+
+static void sigterm_handler_parent (int signum) {
+	//fprintf (stderr, "SIGTERM SIGINT Handler Parent\n");
+	if (pipe_salida >= 0) {
+		if (write (pipe_salida, "", 1) == -1 ) {
+			//fprintf (stderr, "Write to sigterm_pipe failed.\n");
+		}
+		close (pipe_salida);
+		pipe_salida = -1;
+	}
+}
 
 int setnonblock (int fd) {
 	int flags;
@@ -47,8 +65,6 @@ int setnonblock (int fd) {
 	fcntl (fd, F_SETFL, flags);
 }
 
-void main_loop (int epoll_fd);
-
 int main (int argc, char *argv[]) {
 	int epoll_fd;
 	struct epoll_event event;
@@ -56,6 +72,20 @@ int main (int argc, char *argv[]) {
 	int accept_socket;
 	PollingInfo *poller_accept;
 	pthread_attr_t thread_attr;
+	FILE *pid_file;
+	int pipefds[2];
+	struct sigaction act;
+	sigset_t empty_mask;
+	
+	/* Cargar las configuraciones básicas */
+	config_init (argc, argv);
+	
+	/* Write PID file */
+	pid_file = fopen (config_get_string (CONFIG_PID_FILE), "w");
+	if (pid_file) {
+		fprintf (pid_file, "%d\n", getpid ());
+		fclose (pid_file);
+	}
 	
 	/* Crear el mutex que proteja los mensajes en cola */
 	message_init ();
@@ -106,6 +136,55 @@ int main (int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 	
+	/* Crear los pipes para el manejo de señales */
+	if (pipe (pipefds) != 0) {
+		perror ("Failed to create pair of pipes");
+		
+		return EXIT_FAILURE;
+	}
+	pipe_salida = pipefds[1];
+	
+	poller_accept = malloc (sizeof (PollingInfo));
+	
+	if (poller_accept == NULL) {
+		fprintf (stderr, "Failed to reserve memory\n");
+	
+		interface_close (accept_socket);
+		close (epoll_fd);
+	
+		return EXIT_FAILURE;
+	}
+	
+	poller_accept->type = TYPE_EXIT_HANDLER;
+	poller_accept->fd = pipefds[0];
+	
+	event.events = EPOLLIN | EPOLLONESHOT | EPOLLET;
+	event.data.ptr = poller_accept;
+	
+	res = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, pipefds[0], &event);
+	
+	if (res < 0) {
+		fprintf (stderr, "Failed to add socket to watch\n");
+		
+		interface_close (accept_socket);
+		close (epoll_fd);
+		
+		return EXIT_FAILURE;
+	}
+	
+	/* Instalar un manejador de señales para SIGTERM */
+	sigemptyset (&empty_mask);
+	act.sa_mask    = empty_mask;
+	act.sa_flags   = 0;
+	act.sa_handler = &sigterm_handler_parent;
+	if (sigaction (SIGTERM, &act, NULL) < 0) {
+		perror ("Failed to register SIGTERM handler");
+	}
+
+	if (sigaction (SIGINT, &act, NULL) < 0) {
+		perror ("Failed to register SIGINT handler");
+	}
+	
 	/* Lanzar los threads */
 	pthread_attr_init (&thread_attr);
 	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_JOINABLE);
@@ -117,6 +196,10 @@ int main (int argc, char *argv[]) {
 	}
 	
 	main_loop (epoll_fd);
+	
+	/* Esperar el thread */
+	pthread_join (thread_message, NULL);
+	interface_close (accept_socket);
 	
 	return 0;
 }
@@ -131,6 +214,7 @@ void main_loop (int epoll_fd) {
 	int res;
 	char buffer[8192];
 	PollingInfo *poller, *poller_cliente;
+	int salir = 0;
 	
 	do {
 		res_epoll = epoll_wait (epoll_fd, events, MAX_EVENTS, -1);
@@ -138,6 +222,7 @@ void main_loop (int epoll_fd) {
 		if (res_epoll < 0) {
 			if (errno == EINTR) {
 				/* Señal, manejar */
+				continue;
 			} else {
 				break;
 			}
@@ -196,23 +281,35 @@ void main_loop (int epoll_fd) {
 				
 					res = epoll_ctl (epoll_fd, EPOLL_CTL_MOD, poller->fd, &events[g]);
 				}
+			} else if (poller->type == TYPE_EXIT_HANDLER) {
+				/* Señalizar el thread para su salida */
+				message_signal_exit ();
+				salir = 1;
 			}
 		}
-	} while (1);
+	} while (!salir);
 }
 
 void *message_loop (void *param) {
-	/* Instalar el manejador de señales del thread */
 	TelegramMessage *lista, *next, *remain;
 	int res;
+	char buffer;
+	int salir = 0;
 	
 	printf ("Thread de los mensajes\n");
-	while (1) {
+	while (!salir) {
 		lista = block_for_messages ();
 		
 		printf ("Tengo mensajes que procesar\n");
 		remain = NULL;
 		while (lista != NULL) {
+			if (lista->type == MEESAGE_TYPE_EXIT) {
+				salir = 1;
+				
+				lista = lista->next;
+				continue;
+			}
+			
 			printf ("Tratando de enviar un mensaje\n");
 			res = https_send_message (lista->username, lista->text);
 			
@@ -236,6 +333,8 @@ void *message_loop (void *param) {
 				}
 			}
 			lista = next;
+			
+			/* Agregar aquí el threshold */
 		}
 		
 		/* Enviar los mensajes restantes de regreso a la cola de envio */
@@ -245,4 +344,6 @@ void *message_loop (void *param) {
 		
 		/* TODO: Agregar aquí el sleep */
 	}
+	
+	return NULL;
 }
