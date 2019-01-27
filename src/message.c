@@ -42,7 +42,7 @@ void message_add (char *username, char *text) {
 	new = (TelegramMessage *) malloc (sizeof (TelegramMessage));
 	
 	if (new == NULL) {
-		printf ("Warning: No se pudo reservar memoria para un mensaje\n");
+		fprintf (stderr, "Warning: No se pudo reservar memoria para un mensaje\n");
 		
 		return;
 	}
@@ -77,7 +77,7 @@ void message_signal_exit (void) {
 	new = (TelegramMessage *) malloc (sizeof (TelegramMessage));
 	
 	if (new == NULL) {
-		printf ("Warning: No se pudo reservar memoria para un mensaje\n");
+		fprintf (stderr, "Warning: No se pudo reservar memoria para un mensaje\n");
 		
 		return;
 	}

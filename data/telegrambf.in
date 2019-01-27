@@ -1,0 +1,68 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          telegrambf
+# Required-Start:    $local_fs $remote_fs $syslog
+# Required-Stop:     $local_fs $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Telegram Buffer Sender
+# Description:       Debian init script for the Telegram Buffer Sender
+### END INIT INFO
+#
+# Author:       Félix Arreola Rodríguez <apt@gatuno.mx> using ligthdm script from
+#               Yves-Alexis Perez <corsac@debian.org> using gdm script from 
+#               Ryan Murray <rmurray@debian.org>
+#
+set -e
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/bin/telegram_buffer_sender
+PIDFILE=@runstatedir@/telegrambf.pid
+CONFFILE=@sysconfdir@/telegrambf/telegrambf.conf
+
+test -x $DAEMON || exit 0
+
+if [ -r /etc/default/locale ]; then
+  . /etc/default/locale
+  export LANG LANGUAGE
+fi
+
+. /lib/lsb/init-functions
+
+case "$1" in
+  start)
+        log_daemon_msg "Starting Telegram Buffer Sender" "telegram_buffer_sender"
+        start-stop-daemon --start --quiet --pid-file $PIDFILE --name telegram_buffer_sender --config $CONFFILE --exec $DAEMON -b|| echo -n " already running"
+        log_end_msg $?
+  ;;
+  stop)
+        log_daemon_msg "Stopping Telegram Buffer Sender" "telegram_buffer_sender"
+        set +e
+        start-stop-daemon --stop --quiet --pid-file $PIDFILE \
+                --name telegram_buffer_sender --retry 5
+        set -e
+        log_end_msg $?
+  ;;
+#  reload)
+#        log_daemon_msg "Scheduling reload of Light Display Manager configuration" "lightdm"
+#        set +e
+#        start-stop-daemon --stop --signal USR1 --quiet --pidfile \
+#                /var/run/lightdm.pid --name lightdm
+#        set -e
+#        log_end_msg $?
+#  ;;
+  status)
+        status_of_proc -p "$PIDFILE" "$DAEMON" telegram_buffer_sender && exit 0 || exit $?
+  ;;
+  restart|force-reload|reload)
+        $0 stop
+        sleep 1
+        $0 start
+  ;;
+  *)
+        echo "Usage: /etc/init.d/telegrambf {start|stop|restart|reload|force-reload|status}"
+        exit 1
+  ;;
+esac
+
+exit 0

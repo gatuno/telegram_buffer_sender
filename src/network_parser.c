@@ -58,5 +58,8 @@ void parse_network_message (char *buffer, int size) {
 		
 		/* Mandar el mensaje a la cola de mensajes por enviar */
 		message_add (&buffer[1], &buffer[endings[0] + 1]);
+	} else if (type == 0) {
+		/* Mensaje de ping, solo para verificar si la conexión sigue viva */
+		return;
 	}
 }

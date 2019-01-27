@@ -9,6 +9,17 @@ AC_CONFIG_SRCDIR([src/main.c])
 # For debian systems, /usr as default
 AC_PREFIX_DEFAULT([/usr])
 
+# Fix paths...
+if test "$prefix" = /usr; then
+	test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
+	test "$localstatedir" = '${prefix}/var' && localstatedir=/var
+fi
+
+if test "$prefix" = NONE; then
+	test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
+	test "$localstatedir" = '${prefix}/var' && localstatedir=/var
+fi
+
 # We need Gcc
 AC_PROG_CC
 
@@ -48,7 +59,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([ po/Makefile.in
                  Makefile
                  src/Makefile
+                 data/Makefile
 ])
-#                 data/Makefile
 
 AC_OUTPUT

@@ -1,0 +1,10 @@
+[Unit]
+Description=Telegram Buffer Sender
+
+[Service]
+ExecStart=/usr/bin/telegram_buffer_sender --pid-file @runstatedir@/telegrambf.pid --name telegram_buffer_sender --config @sysconfdir@/telegrambf/telegrambf.conf
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

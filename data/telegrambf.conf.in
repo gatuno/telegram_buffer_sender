@@ -1,0 +1,3 @@
+[daemon]
+bot-key=
+socket=@runstatedir@/telegrambf/telegrambf.socket

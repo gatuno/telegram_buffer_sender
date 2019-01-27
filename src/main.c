@@ -92,6 +92,8 @@ int main (int argc, char *argv[]) {
 	
 	https_init ();
 	
+	/* Cargar la configuración del proceso */
+	
 	accept_socket = interface_setup_socket ();
 	
 	if (accept_socket < 0) {
@@ -191,7 +193,7 @@ int main (int argc, char *argv[]) {
 	
 	res = pthread_create (&thread_message, &thread_attr, message_loop, NULL);  
 	if (res) {
-		printf ("ERROR; return code from pthread_create() is %d\n", res);
+		fprintf (stderr, "ERROR; return code from pthread_create() is %d\n", res);
 		return EXIT_FAILURE;
 	}
 	
@@ -254,11 +256,11 @@ void main_loop (int epoll_fd) {
 				do {
 					res = read (poller->fd, buffer, sizeof (buffer));
 					
-					if (res == EAGAIN || res == EWOULDBLOCK) {
+					if (res < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 						break;
 					}
 					
-					if (res == 0) {
+					if (res <= 0) {
 						/* Conexión cerrada */
 						res = epoll_ctl (epoll_fd, EPOLL_CTL_DEL, poller->fd, NULL);
 						
@@ -269,7 +271,7 @@ void main_loop (int epoll_fd) {
 						break;
 					}
 					
-					printf ("Data del cliente [%i]\n", poller->fd);
+					//printf ("Data del cliente [%i]\n", poller->fd);
 					
 					/* Procesar data aquí */
 					parse_network_message (buffer, res);
@@ -295,12 +297,14 @@ void *message_loop (void *param) {
 	int res;
 	char buffer;
 	int salir = 0;
+	int sent;
 	
-	printf ("Thread de los mensajes\n");
+	//printf ("Thread de los mensajes\n");
+	sent = 0;
 	while (!salir) {
 		lista = block_for_messages ();
 		
-		printf ("Tengo mensajes que procesar\n");
+		//printf ("Tengo mensajes que procesar\n");
 		remain = NULL;
 		while (lista != NULL) {
 			if (lista->type == MEESAGE_TYPE_EXIT) {
@@ -310,39 +314,41 @@ void *message_loop (void *param) {
 				continue;
 			}
 			
-			printf ("Tratando de enviar un mensaje\n");
+			//printf ("Tratando de enviar un mensaje\n");
 			res = https_send_message (lista->username, lista->text);
-			
+			sent++;
 			next = lista->next;
 			
 			if (res == 0) {
 				/* Mensaje enviado, se puede ir el mensaje */
 				free (lista);
-				printf ("Correctamente enviado\n");
+				//printf ("Correctamente enviado\n");
 			} else {
 				lista->tries++;
 				
 				if (lista->tries == 3) {
 					/* No reintentar mas de 3 veces */
 					free (lista);
-					printf ("Agotó los intentos\n");
+					//printf ("Agotó los intentos\n");
 				} else {
 					lista->next = remain;
 					remain = lista;
-					printf ("se reintentará otra vez\n");
+					//printf ("se reintentará otra vez\n");
 				}
 			}
 			lista = next;
 			
 			/* Agregar aquí el threshold */
+			if (sent >= 10) {
+				sleep (1);
+				sent = 0;
+			}
 		}
 		
 		/* Enviar los mensajes restantes de regreso a la cola de envio */
 		if (remain != NULL) {
 			message_return_to_list (remain);
 		}
-		
-		/* TODO: Agregar aquí el sleep */
 	}
 	
 	return NULL;

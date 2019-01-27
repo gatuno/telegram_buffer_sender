@@ -338,12 +338,12 @@ int https_send_message (const char *user, const char *text) {
 	status = parser_resp_status (response, NULL);
 	
 	if (status == -1) {
-		printf ("Malformed status line\n");
+		fprintf (stderr, "Malformed status line from JSON response\n");
 		
 		goto sd_shutdown;
 	}
 	
-	printf ("Status: %i\n", status);
+	//printf ("Status: %i\n", status);
 	
 	content_len = -1;
 	if (parser_resp_header (response, "Content-Length", buffer_val, sizeof (buffer_val)) == 0) {
@@ -381,7 +381,7 @@ int https_send_message (const char *user, const char *text) {
 	}
 	
 	if (len_body > 0) {
-		printf ("Body: %s\n", buffer_body);
+		//printf ("Body: %s\n", buffer_body);
 	}
 	
 	SSL_shutdown (ssl);
@@ -416,19 +416,19 @@ int parse_check (int status, char *body, int body_len) {
 	
 	r = jsmn_parse(&p, body, body_len, t, sizeof(t)/sizeof(t[0]));
 	if (r < 0) {
-		printf("Failed to parse JSON: %d\n", r);
+		//printf("Failed to parse JSON: %d\n", r);
 		return -1;
 	}
 	
 	if (r < 1 || t[0].type != JSMN_OBJECT) {
-		printf("Object expected\n");
+		//printf("Object expected\n");
 		return -1;
 	}
 	
 	for (g = 1; g < r; g++) {
 		if (jsoneq (body, &t[g], "ok") == 0) {
 			if (t[g + 1].type != JSMN_PRIMITIVE) {
-				printf ("ok is expected to be a primitive\n");
+				//printf ("ok is expected to be a primitive\n");
 				
 				return -1;
 			}
@@ -436,7 +436,7 @@ int parse_check (int status, char *body, int body_len) {
 			ok = body[t[g + 1].start];
 			
 			if (ok != 't' && ok != 'f') {
-				printf ("ok is expected to be a boolean\n");
+				//printf ("ok is expected to be a boolean\n");
 				
 				return -1;
 			}
@@ -467,17 +467,16 @@ int parse_check (int status, char *body, int body_len) {
 	}
 	
 	if (ok == 'f') {
-		if (error_code == 403) {
-			/* No pude enviar el mensaje, no reintentar */
-			printf ("I couldn't send the message, error %d: %s\n", error_code, error_desc);
-			
-			return 0;
-		}
+		//if (error_code == 403) {
+		//}
+		/* No pude enviar el mensaje, no reintentar */
 		
-		printf ("I couldn't send the message, error %d: %s\n", error_code, error_desc);
+		fprintf (stderr, "I couldn't send the message, error %d: %s\n", error_code, error_desc);
 		
 		return 0;
 	}
 	
+	// Caso contrario, asumir que se no se pudo enviar */
+	return -1;
 }
 
