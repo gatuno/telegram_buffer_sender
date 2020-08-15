@@ -1,4 +1,4 @@
-AC_INIT([Telegram Buffer Sender], [0.1.0], [], [telegram-buffer-sender])
+AC_INIT([Telegram Buffer Sender], [0.1.1], [], [telegram-buffer-sender])
 
 AC_REVISION([Revision 1])
 

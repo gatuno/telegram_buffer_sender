@@ -33,6 +33,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#include <time.h>
+
 #include "main.h"
 #include "socket_interface.h"
 #include "message.h"
@@ -292,15 +294,28 @@ void main_loop (int epoll_fd) {
 	} while (!salir);
 }
 
+void timespec_diff (struct timespec *start, struct timespec *stop, struct timespec *result) {
+	if ((stop->tv_nsec - start->tv_nsec) < 0) {
+		result->tv_sec = stop->tv_sec - start->tv_sec - 1;
+		result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;
+	} else {
+		result->tv_sec = stop->tv_sec - start->tv_sec;
+		result->tv_nsec = stop->tv_nsec - start->tv_nsec;
+	}
+}
+
 void *message_loop (void *param) {
 	TelegramMessage *lista, *next, *remain;
 	int res;
 	char buffer;
 	int salir = 0;
 	int sent;
+	struct timespec last_sent, current, diff;
 	
 	//printf ("Thread de los mensajes\n");
 	sent = 0;
+	clock_gettime (CLOCK_MONOTONIC, &last_sent);
+	
 	while (!salir) {
 		lista = block_for_messages ();
 		
@@ -316,7 +331,7 @@ void *message_loop (void *param) {
 			
 			//printf ("Tratando de enviar un mensaje\n");
 			res = https_send_message (lista->username, lista->text);
-			sent++;
+			clock_gettime (CLOCK_MONOTONIC, &current);
 			next = lista->next;
 			
 			if (res == 0) {
@@ -339,8 +354,23 @@ void *message_loop (void *param) {
 			lista = next;
 			
 			/* Agregar aquí el threshold */
-			if (sent >= 10) {
-				sleep (1);
+			timespec_diff (&last_sent, &current, &diff);
+			
+			/* Máximo 6 mensajes por segundo */
+			if (diff.tv_sec <= 1) {
+				if (sent < 6) {
+					sent++;
+					last_sent = current;
+				} else {
+					/* Alcancé el threshold, detener el envio */
+					sleep (1);
+					
+					clock_gettime (CLOCK_MONOTONIC, &last_sent);
+					sent = 0;
+				}
+			} else {
+				/* Como la diferencias de tiempos es mayor a 1 segundo, no hay threshold */
+				last_sent = current;
 				sent = 0;
 			}
 		}
