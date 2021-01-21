@@ -40,7 +40,7 @@
 #include "message.h"
 #include "https.h"
 #include "network_parser.h"
-#include "config.h"
+#include "config_file.h"
 
 void *message_loop (void *);
 void main_loop (int epoll_fd);

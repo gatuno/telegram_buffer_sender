@@ -40,7 +40,7 @@
 
 #include "jsmn.h"
 
-#include "config.h"
+#include "config_file.h"
 
 #define MIN(i, j) ((i) <= (j) ? (i) : (j))
 

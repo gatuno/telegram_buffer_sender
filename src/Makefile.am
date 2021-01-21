@@ -9,7 +9,7 @@ telegram_buffer_sender_SOURCES = main.c main.h \
 	network_parser.c network_parser.h \
 	socket_interface.c socket_interface.h \
 	uri_encode.c uri_encode.h \
-	config.c config.h \
+	config_file.c config_file.h \
 	ini.c ini.h
 
 telegram_buffer_sender_CPPFLAGS = -DLOCALEDIR=\"$(localedir)\" $(AM_CPPFLAGS)

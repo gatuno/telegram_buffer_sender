@@ -3,7 +3,7 @@ Description=Telegram Buffer Sender On %I
 
 [Service]
 ExecStartPre=/bin/mkdir -p @runstatedir@/telegrambf/
-Type=forking
+Type=exec
 PIDFile=@runstatedir@/telegrambf_%i.pid
 ExecStart=/usr/bin/telegram_buffer_sender --pid-file @runstatedir@/telegrambf/%i.pid --config @sysconfdir@/telegrambf/%i.conf
 Restart=always

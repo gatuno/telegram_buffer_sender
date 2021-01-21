@@ -31,7 +31,7 @@
 
 #include "socket_interface.h"
 #include "main.h"
-#include "config.h"
+#include "config_file.h"
 
 int interface_setup_socket (void) {
 	int sock;
